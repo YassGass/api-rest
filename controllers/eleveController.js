@@ -1,124 +1,73 @@
 const eleveModel = require('../models/eleve.model');
 const EleveModel = require('../models/eleve.model');
+const bcrypt = require ('bcrypt');
+const jwt = require ('jsonwebtoken');
 
 module.exports = {
-    list: (req, res) => {
-        EleveModel.find((err,eleves)=>{
+    signup: (req, res)=> {
+        bcrypt.hash(req.body.mdp, 10, (err, hash)=> {
             if(err){
                 return res.status(500).json({
-                    status:500,
-                    Message:'error when getting Eleve'
+                    status: 500,
+                    message:err.message
+
                 })
             }
-            return res.status(200).json({
-                status:200,
-                eleves:eleves
+            
+            const newEleve = new Professeur({
+                nom: req.body.nom,
+                prenom: req.body.prenom,
+                email: req.body.email,
+                identifiant: req.body.identifiant,
+                mdp: hash
+            })
+            
+            newEleve.save((err, eleve)=> {
+                if(err){
+                    return res.status(400).json({
+                        status:400,
+                        message:err.message
+                    })
+                }
+                return res.status(201).json({
+                    status:201,
+                    message: 'Professeur created'
+                })
             })
         })
     },
-    
-    show:(req, res) =>{
-        const id= req.params.id;
-        EleveModel.findOne({id: id},(err, eleve)=>{
-            if(err){
-                return res.status(500).json({
-                    status:500,
-                    Message:'error when getting Eleve'
-                })
-            }
-            if (!eleve){
+
+    login: (req, res)=> {
+        Eleve.findOne({email: req.body.email}, (err, eleve)=>{
+            if (err){
                 return res.status(404).json({
-                status:404,
-                Message:'no such Eleve'
-            })
-
-            }
-            return res.status(200).json({
-                status:200,
-                eleves:eleves
-            })
-        });
-    },
-
-    create:(req, res) =>{
-        var Eleve =new EleveModel({
-            ...req.body
-        });
-
-        Eleve.save((err,Eleve)=>{
-            if(err){
-                return res.status(500).json({
-                    Message:'error when getting Eleve',
-                    error: err
+                    status: 404,
+                    message: 'User not found !'
                 })
             }
-            return res.status(201).json({
-                status:201,
-                Message:'eleve created'
-            })
-        });
-    },
-
-    update: (req, res)=> {
-        const id = req.params.id;
-        EleveModel.findOne({_id: id}, (err, Eleve)=>{
-            if(err){
-                return res.status(500).json({
-                    status:500,
-                    Message:'error when getting Eleve'
-                })
-            }
-            if (!Eleve){
-                return res.status(404).json({
-                    status:404,
-                    message: 'No such Eleve'
-                })
-            }
-            Eleve.nom = req.body.nom ? req.body.nom : Eleve.nom;
-            Eleve.prenom = req.body.prenom ? req.body.prenom : Eleve.prenom;
-            Eleve.email = req.body.email ? req.body.email : Eleve.email;
-            Eleve.identifiant = req.body.identifiant ? req.body.identifiant : Eleve.identifiant;
-            Eleve.mdp = req.body.mdp ? req.body.mdp : Eleve.mdp;
-            Eleve.avatar = req.body.avatar ? req.body.avatar : Eleve.avatar;
-
-
-            Eleve.save((err, Eleve)=>{
-                if(err){
+            bcrypt.compare(req.body.mdp, eleve.mdp, (err, valid)=>{
+                if (err){
                     return res.status(500).json({
-                        status:500,
-                        Message:'error when updating Eleve',
-                        error: err
+                        status: 500,
+                        message: err.message 
+                    })
+                }
+                if (!valid){
+                    return res.status(401).json({
+                        status: 401,
+                        message: 'mauvais mot de passe'
                     })
                 }
 
                 return res.status(200).json({
-                    status:200,
-                    message:'Eleve updated !'
+                    eleveId : eleve._id,
+                    token: jwt.sign(
+                        {eleveId : eleve._id},
+                        process.env.SECRET_TOKEN,
+                        {expiresIn:'24h'}
+                    )
                 })
             })
-        })
-    },
-
-    remove:(req, res)=> {
-        const id = req.params.id;
-        EleveModel.findByIdAndRemove(id, (err, Eleve)=>{
-            if(err){
-                return res.status(500).json({
-                    status:500,
-                    Message:'error when removing Eleve',
-                    error: err
-                })
-            }
-            if(!Eleve){
-                return res.status(404).json({
-                    status:404,
-                    message: 'no such Eleve'
-                })
-            }
-            return res.status(204).json({
-                status:204,
-                message:'Eleve deleted'
-            })  
         })
     }
     
